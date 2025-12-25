@@ -54,6 +54,12 @@ if [ ! -f "/home/ark/.config/.update12242025" ]; then
 	sudo sed -i "/title\=/c\title\=dArkOS ($UPDATE_DATE)" /usr/share/plymouth/themes/text.plymouth
 	echo "$UPDATE_DATE" > /home/ark/.config/.VERSION
 
-	touch "/home/ark/.config/.update03302025"
+	touch "$UPDATE_DONE"
+	rm -v -- "$0" | tee -a "$LOG_FILE"
+	printf "\033c" >> /dev/tty1
+	msgbox "Updates have been completed.  System will now restart after you hit the A button to continue.  If the system doesn't restart after pressing A, just restart the system manually."
+	echo $c_brightness > /sys/class/backlight/backlight/brightness
+	sudo reboot
+	exit 187
 
 fi
