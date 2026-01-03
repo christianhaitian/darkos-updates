@@ -54,7 +54,7 @@ if [ ! -f "/home/ark/.config/.update12242025" ]; then
 	sudo sed -i "/title\=/c\title\=dArkOS ($UPDATE_DATE)" /usr/share/plymouth/themes/text.plymouth
 	echo "$UPDATE_DATE" > /home/ark/.config/.VERSION
 
-	touch "$UPDATE_DONE"
+	touch "/home/ark/.config/.update12242025"
 
 fi
 
