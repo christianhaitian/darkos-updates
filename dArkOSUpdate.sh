@@ -1,6 +1,6 @@
 #!/bin/bash
 clear
-UPDATE_DATE="12312025"
+UPDATE_DATE="01082026"
 LOG_FILE="/home/ark/update$UPDATE_DATE.log"
 UPDATE_DONE="/home/ark/.config/.update$UPDATE_DATE"
 
@@ -134,6 +134,89 @@ if [ ! -f "/home/ark/.config/.update12312025" ]; then
 	sudo mv -f libavcodec.so.58 /usr/lib/arm-linux-gnueabihf/
 	sudo chown root:root /usr/lib/arm-linux-gnueabihf/libavcodec.so.58
 	rm -f libavcodec58_4.3.9-0+deb11u1_armhf.deb
+
+	printf "\nUpdate boot text to reflect current version of dArkOS\n" | tee -a "$LOG_FILE"
+	sudo sed -i "/title\=/c\title\=dArkOS ($UPDATE_DATE)" /usr/share/plymouth/themes/text.plymouth
+	echo "$UPDATE_DATE" > /home/ark/.config/.VERSION
+
+	touch "/home/ark/.config/.update12312025"
+
+fi
+
+if [ ! -f "/home/ark/.config/.update01082026" ]; then
+
+	printf "\nUpdate Emulationstation to fix swap ab when in options and crashing while scrolling with few games loaded\nUpdate emulationstation translations\nFix drastic in game saves and default restore for rg351mp\nAdd Vietnamese ES translation\nAdd Sharp Shimmerless Shader\nFix Chinese text rendering\nAdd liblcf library for easyrpg\nAdd missing easyrpg.sh script\nChange default j2me emulator to freej2me-plus\n" | tee -a "$LOG_FILE"
+	sudo rm -rf /dev/shm/*
+	sudo wget -t 3 -T 60 --no-check-certificate "$LOCATION"/01082026/darkosupdate01082026.zip -O /dev/shm/darkosupdate01082026.zip -a "$LOG_FILE" || sudo rm -f /dev/shm/darkosupdate01082026.zip | tee -a "$LOG_FILE"
+	if [ -f "/dev/shm/darkosupdate01082026.zip" ]; then
+	  sudo unzip -X -o /dev/shm/darkosupdate01082026.zip -d / | tee -a "$LOG_FILE"
+	  sudo rm -fv /dev/shm/darkosupdate01082026.zip | tee -a "$LOG_FILE"
+	else
+	  printf "\nThe update couldn't complete because the package did not download correctly.\nPlease retry the update again." | tee -a "$LOG_FILE"
+	  sudo rm -fv /dev/shm/darkosupdate01082026.z* | tee -a "$LOG_FILE"
+	  sleep 3
+	  echo $c_brightness > /sys/class/backlight/backlight/brightness
+	  exit 1
+	fi
+
+	printf "\nCopy correct emulationstation depending on device\n" | tee -a "$LOG_FILE"
+	if [ -f "/boot/rk3326-rg351mp-linux.dtb" ] || [ -f "/boot/rk3326-g350-linux.dtb" ]; then
+	  sudo mv -fv /home/ark/emulationstation.351v /usr/bin/emulationstation/emulationstation | tee -a "$LOG_FILE"
+	  sudo rm -fv /home/ark/emulationstation.* | tee -a "$LOG_FILE"
+	  sudo chmod -v 777 /usr/bin/emulationstation/emulationstation* | tee -a "$LOG_FILE"
+	elif [ -f "/boot/rk3326-odroidgo2-linux.dtb" ] || [ -f "/boot/rk3326-odroidgo2-linux-v11.dtb" ] || [ -f "/boot/rk3326-odroidgo3-linux.dtb" ]; then
+      sudo cp -fv /home/ark/emulationstation.header /usr/bin/emulationstation/emulationstation | tee -a "$LOG_FILE"
+	  sudo cp -fv /home/ark/emulationstation.351v /usr/bin/emulationstation/emulationstation.fullscreen | tee -a "$LOG_FILE"
+	  sudo rm -fv /home/ark/emulationstation.* | tee -a "$LOG_FILE"
+	  sudo chmod -v 777 /usr/bin/emulationstation/emulationstation* | tee -a "$LOG_FILE"
+	else
+	  sudo mv -fv /home/ark/emulationstation.503 /usr/bin/emulationstation/emulationstation | tee -a "$LOG_FILE"
+	  sudo rm -fv /home/ark/emulationstation.* | tee -a "$LOG_FILE"
+	  sudo chmod -v 777 /usr/bin/emulationstation/emulationstation* | tee -a "$LOG_FILE"
+	fi
+
+	printf "\nCopy correct emulationstation settings depending on chipset\n" | tee -a "$LOG_FILE"
+	cp -v /etc/emulationstation/es_systems.cfg /etc/emulationstation/es_systems.cfg.update01082026.bak
+	if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+	  cp -f /etc/emulationstation/es_systems.cfg.rk3566 /etc/emulationstation/es_systems.cfg
+	  rm -f /etc/emulationstation/es_systems.cfg.rk*
+	else
+	  cp -f /etc/emulationstation/es_systems.cfg.rk3326 /etc/emulationstation/es_systems.cfg
+	  rm -f /etc/emulationstation/es_systems.cfg.rk*
+	fi
+	if test ! -z "$(cat /etc/fstab | grep roms2 | tr -d '\0')"
+	then
+ 	  printf "\nAccomodate for roms2 with new es_systems.cfg file...\n" | tee -a "$LOG_FILE"
+	  sed -i '/<path>\/roms\//s//<path>\/roms2\//g' /etc/emulationstation/es_systems.cfg
+	fi
+
+	if [ ! -z "$(grep "RGB30" /home/ark/.config/.DEVICE | tr -d '\0')" ] || [ ! -z "$(grep "RGB20PRO" /home/ark/.config/.DEVICE | tr -d '\0')" ]; then
+	  printf "\nUpdate batt_life_warning.py script\n" | tee -a "$LOG_FILE"
+	  sudo cp -fv /home/ark/powkiddy/batt_life_warning.py /usr/local/bin/. | tee -a "$LOG_FILE"
+	elif [ ! -z "$(grep "RG351MP" /home/ark/.config/.DEVICE | tr -d '\0')" ]; then
+	  printf "\nUpdate batt_life_warning.py scripts\n" | tee -a "$LOG_FILE"
+	  sudo cp -fv /home/ark/rg351mp/batt_life_warning.py* /usr/local/bin/. | tee -a "$LOG_FILE"
+	fi
+	rm -rfv /home/ark/powkiddy/ | tee -a "$LOG_FILE"
+	rm -rfv /home/ark/rg351mp/ | tee -a "$LOG_FILE"
+
+	printf "\nRemove Backup ArkOS and Restore ArkOS settings scripts.  They're now replaced with Backup dArkOS and Restore dArkOS settings scripts\n" | tee -a "$LOG_FILE"
+	rm -fv /opt/system/Advanced/Backup\ ArkOS\ Settings.sh | tee -a "$LOG_FILE"
+	rm -fv /opt/system/Advanced/Restore\ ArkOS\ Settings.sh | tee -a "$LOG_FILE"
+
+	printf "\nMove bigpemu defaultconfig to defaultconfigs\n"
+	mv -v /opt/bigpemu/defaultconfig/ /opt/bigpemu/defaultconfigs/ | tee -a "$LOG_FILE"
+
+	printf "\nMove Scan_for_new_games.alg from scummvm to alg\n"
+	mv -v /roms/scummvm/Scan_for_new_games.alg /roms/alg/Scan_for_new_games.alg | tee -a "$LOG_FILE"
+	if test ! -z "$(cat /etc/fstab | grep roms2 | tr -d '\0')"
+	then
+	  mv -v /roms2/scummvm/Scan_for_new_games.alg /roms2/alg/Scan_for_new_games.alg | tee -a "$LOG_FILE"
+	fi
+
+	printf "\nAdd netcat for online download of j2me\n" | tee -a "$LOG_FILE"
+	sudo apt update -y  | tee -a "$LOG_FILE"
+	sudo apt -y install netcat-openbsd | tee -a "$LOG_FILE"
 
 	printf "\nUpdate boot text to reflect current version of dArkOS\n" | tee -a "$LOG_FILE"
 	sudo sed -i "/title\=/c\title\=dArkOS ($UPDATE_DATE)" /usr/share/plymouth/themes/text.plymouth
