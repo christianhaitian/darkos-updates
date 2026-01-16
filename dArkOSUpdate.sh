@@ -1,6 +1,6 @@
 #!/bin/bash
 clear
-UPDATE_DATE="01082026"
+UPDATE_DATE="01162026"
 LOG_FILE="/home/ark/update$UPDATE_DATE.log"
 UPDATE_DONE="/home/ark/.config/.update$UPDATE_DATE"
 
@@ -217,6 +217,58 @@ if [ ! -f "/home/ark/.config/.update01082026" ]; then
 	printf "\nAdd netcat for online download of j2me\n" | tee -a "$LOG_FILE"
 	sudo apt update -y  | tee -a "$LOG_FILE"
 	sudo apt -y install netcat-openbsd | tee -a "$LOG_FILE"
+
+	printf "\nUpdate boot text to reflect current version of dArkOS\n" | tee -a "$LOG_FILE"
+	sudo sed -i "/title\=/c\title\=dArkOS ($UPDATE_DATE)" /usr/share/plymouth/themes/text.plymouth
+	echo "$UPDATE_DATE" > /home/ark/.config/.VERSION
+
+	touch "/home/ark/.config/.update01082026"
+
+fi
+
+if [ ! -f "/home/ark/.config/.update01162026" ]; then
+
+	printf "\nFix Quick Mode\nFix OpenBOR\n" | tee -a "$LOG_FILE"
+	sudo rm -rf /dev/shm/*
+	sudo wget -t 3 -T 60 --no-check-certificate "$LOCATION"/01162026/darkosupdate01162026.zip -O /dev/shm/darkosupdate01162026.zip -a "$LOG_FILE" || sudo rm -f /dev/shm/darkosupdate01162026.zip | tee -a "$LOG_FILE"
+	if [ -f "/dev/shm/darkosupdate01162026.zip" ]; then
+	  sudo unzip -X -o /dev/shm/darkosupdate01162026.zip -d / | tee -a "$LOG_FILE"
+	  sudo rm -fv /dev/shm/darkosupdate01162026.zip | tee -a "$LOG_FILE"
+	else
+	  printf "\nThe update couldn't complete because the package did not download correctly.\nPlease retry the update again." | tee -a "$LOG_FILE"
+	  sudo rm -fv /dev/shm/darkosupdate01162026.z* | tee -a "$LOG_FILE"
+	  sleep 3
+	  echo $c_brightness > /sys/class/backlight/backlight/brightness
+	  exit 1
+	fi
+
+	if [ -f "/opt/system/Advanced/Enable Quick Mode.sh" ]; then
+	  sudo rm -fv /usr/local/bin/quickmode.sh | tee -a "$LOG_FILE"
+	fi
+
+	if [ ! -f "/etc/polkit-1/rules.d/10-networkmanager.rules" ]; then
+	  printf "\nRemove requirement for sudo to control nmcli\n" | tee -a "$LOG_FILE"
+	  cat <<EOF | sudo tee /etc/polkit-1/rules.d/10-networkmanager.rules
+polkit.addRule(function(action, subject) {
+    if (action.id.indexOf("org.freedesktop.NetworkManager") == 0 &&
+        subject.isInGroup("netdev")) {
+        return polkit.Result.YES;
+    }
+});
+EOF
+	fi
+
+	if [ ! -z "$(grep "RG353" /home/ark/.config/.DEVICE | tr -d '\0')" ] && [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+	  printf "\nFix unknown panel version info for RG353V/VS and RG353M V1 and V2 units\n" | tee -a "$LOG_FILE"
+	  sudo dd if=/home/ark/resource.img of=/dev/mmcblk1 bs=512 seek=24576 conv=notrunc | tee -a "$LOG_FILE"
+	  sudo rm -fv /home/ark/resource.img | tee -a "$LOG_FILE"
+	else
+	  sudo rm -fv /home/ark/resource.img | tee -a "$LOG_FILE"
+	fi
+
+	printf "\nUpgraded Debian Trixie OS to version 13.3\n" | tee -a "$LOG_FILE"
+	sudo apt -y update | tee -a "$LOG_FILE"
+	sudo apt -y upgrade | tee -a "$LOG_FILE"
 
 	printf "\nUpdate boot text to reflect current version of dArkOS\n" | tee -a "$LOG_FILE"
 	sudo sed -i "/title\=/c\title\=dArkOS ($UPDATE_DATE)" /usr/share/plymouth/themes/text.plymouth
