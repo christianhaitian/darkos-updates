@@ -1,6 +1,6 @@
 #!/bin/bash
 clear
-UPDATE_DATE="01162026"
+UPDATE_DATE="01302026"
 LOG_FILE="/home/ark/update$UPDATE_DATE.log"
 UPDATE_DONE="/home/ark/.config/.update$UPDATE_DATE"
 
@@ -269,6 +269,140 @@ EOF
 	printf "\nUpgraded Debian Trixie OS to version 13.3\n" | tee -a "$LOG_FILE"
 	sudo apt -y update | tee -a "$LOG_FILE"
 	sudo apt -y upgrade | tee -a "$LOG_FILE"
+
+	printf "\nUpdate boot text to reflect current version of dArkOS\n" | tee -a "$LOG_FILE"
+	sudo sed -i "/title\=/c\title\=dArkOS ($UPDATE_DATE)" /usr/share/plymouth/themes/text.plymouth
+	echo "$UPDATE_DATE" > /home/ark/.config/.VERSION
+
+	touch "/home/ark/.config/.update01162026"
+
+fi
+
+if [ ! -f "/home/ark/.config/.update01302026" ]; then
+
+	printf "\nAdd gif and vid option to emulationstation\nFix perfmax and perfnorm scripts\nFix hdmi-test script\nUpdate local netplay based scripts and configs\n" | tee -a "$LOG_FILE"
+	sudo rm -rf /dev/shm/*
+	sudo wget -t 3 -T 60 --no-check-certificate "$LOCATION"/01302026/darkosupdate01302026.zip -O /dev/shm/darkosupdate01302026.zip -a "$LOG_FILE" || sudo rm -f /dev/shm/darkosupdate01302026.zip | tee -a "$LOG_FILE"
+	if [ -f "/dev/shm/darkosupdate01302026.zip" ]; then
+	  sudo unzip -X -o /dev/shm/darkosupdate01302026.zip -d / | tee -a "$LOG_FILE"
+	  sudo cp -fv /opt/system/Advanced/Switch\ to\ SD2\ for\ Roms.sh /usr/local/bin/. | tee -a "$LOG_FILE"
+	  if test ! -z "$(cat /etc/fstab | grep roms2 | tr -d '\0')"
+	  then
+	    sudo rm -fv /opt/system/Advanced/Switch\ to\ SD2\ for\ Roms.sh | tee -a "$LOG_FILE"
+	  fi
+	  if [ ! -z "$(grep "RGB10" /home/ark/.config/.DEVICE | tr -d '\0')" ]; then
+	    sudo rm -fv /usr/local/bin/Switch\ to\ SD2\ for\ Roms.sh | tee -a "$LOG_FILE"
+	  fi
+	  sudo rm -fv /dev/shm/darkosupdate01302026.zip | tee -a "$LOG_FILE"
+	else
+	  printf "\nThe update couldn't complete because the package did not download correctly.\nPlease retry the update again." | tee -a "$LOG_FILE"
+	  sudo rm -fv /dev/shm/darkosupdate01302026.z* | tee -a "$LOG_FILE"
+	  sleep 3
+	  echo $c_brightness > /sys/class/backlight/backlight/brightness
+	  exit 1
+	fi
+
+	printf "\nAdd hostapd and dnsmasq for local netplay\n" | tee -a "$LOG_FILE"
+	sudo apt update -y  | tee -a "$LOG_FILE"
+	sudo mv -fv /etc/dnsmasq.conf /tmp/. | tee -a "$LOG_FILE"
+	sudo mv -fv /etc/hostapd/hostapd.conf /tmp/. | tee -a "$LOG_FILE"
+	sudo apt -y install hostapd dnsmasq | tee -a "$LOG_FILE"
+	sudo mv -fv /tmp/dnsmasq.conf /etc/dnsmasq.conf | tee -a "$LOG_FILE"
+	sudo mv -fv /tmp/hostapd.conf /etc/hostapd/hostapd.conf | tee -a "$LOG_FILE"
+	sudo systemctl disable hostapd dnsmasq | tee -a "$LOG_FILE"
+
+	if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" != *"rk3566"* ]]; then
+	  sudo rm -fv /usr/local/bin/hdmi-test.sh | tee -a "$LOG_FILE"
+	fi
+
+	sudo chown -R ark:ark /opt
+	if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+	  rm -fv /opt/gametank/GameTankEmulator.rk3326 | tee -a "$LOG_FILE"
+	else
+	  mv -fv /opt/gametank/GameTankEmulator.rk3326 /opt/gametank/GameTankEmulator | tee -a "$LOG_FILE"
+	fi
+
+	if [ ! -f "/usr/share/alsa/alsa.conf.mednafen" ]; then
+	  printf "\nCreate missing alsa.conf.mednafen\n" | tee -a "$LOG_FILE"
+	  sudo cp -fv /usr/share/alsa/alsa.conf /usr/share/alsa/alsa.conf.mednafen | tee -a "$LOG_FILE"
+	  sudo sed -i '/\"\~\/.asoundrc\"/s//\"\~\/.asoundrc.mednafen\"/' /usr/share/alsa/alsa.conf.mednafen
+	fi
+
+	printf "\nCopy correct emulationstation settings depending on chipset\n" | tee -a "$LOG_FILE"
+	cp -v /etc/emulationstation/es_systems.cfg /etc/emulationstation/es_systems.cfg.update01302026.bak
+	if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+	  cp -f /etc/emulationstation/es_systems.cfg.rk3566 /etc/emulationstation/es_systems.cfg
+	  rm -f /etc/emulationstation/es_systems.cfg.rk*
+	else
+	  cp -f /etc/emulationstation/es_systems.cfg.rk3326 /etc/emulationstation/es_systems.cfg
+	  rm -f /etc/emulationstation/es_systems.cfg.rk*
+	fi
+	mkdir -p /roms/gametank
+	if test ! -z "$(cat /etc/fstab | grep roms2 | tr -d '\0')"
+	then
+ 	  printf "\nAccomodate for roms2 with new es_systems.cfg file...\n" | tee -a "$LOG_FILE"
+	  sed -i '/<path>\/roms\//s//<path>\/roms2\//g' /etc/emulationstation/es_systems.cfg
+	  mkdir -p /roms2/gametank
+	fi
+
+	printf "\nCopy correct emulationstation depending on device\n" | tee -a "$LOG_FILE"
+	if [ -f "/boot/rk3326-a10mini-linux.dtb" ] || [ -f "/boot/rk3326-rg351mp-linux.dtb" ] || [ -f "/boot/rk3326-g350-linux.dtb" ]; then
+	  sudo mv -fv /home/ark/emulationstation.351v /usr/bin/emulationstation/emulationstation | tee -a "$LOG_FILE"
+	  sudo rm -fv /home/ark/emulationstation.* | tee -a "$LOG_FILE"
+	  sudo chmod -v 777 /usr/bin/emulationstation/emulationstation* | tee -a "$LOG_FILE"
+	elif [ -f "/boot/rk3326-odroidgo2-linux.dtb" ] || [ -f "/boot/rk3326-odroidgo2-linux-v11.dtb" ] || [ -f "/boot/rk3326-odroidgo3-linux.dtb" ]; then
+      sudo cp -fv /home/ark/emulationstation.header /usr/bin/emulationstation/emulationstation | tee -a "$LOG_FILE"
+	  sudo cp -fv /home/ark/emulationstation.351v /usr/bin/emulationstation/emulationstation.fullscreen | tee -a "$LOG_FILE"
+	  sudo rm -fv /home/ark/emulationstation.* | tee -a "$LOG_FILE"
+	  sudo chmod -v 777 /usr/bin/emulationstation/emulationstation* | tee -a "$LOG_FILE"
+	else
+	  sudo mv -fv /home/ark/emulationstation.503 /usr/bin/emulationstation/emulationstation | tee -a "$LOG_FILE"
+	  sudo rm -fv /home/ark/emulationstation.* | tee -a "$LOG_FILE"
+	  sudo chmod -v 777 /usr/bin/emulationstation/emulationstation* | tee -a "$LOG_FILE"
+	fi
+
+	if [ ! -z "$(grep "A10MINI" /home/ark/.config/.DEVICE | tr -d '\0')" ]; then
+	  printf "\nEnabling additional lower scaling frequencies for the A10 Mini power savings..\n" | tee -a "$LOG_FILE"
+	  sudo cp -fv /home/ark/rk3326-a10mini-linux.dtb /boot/. | tee -a "$LOG_FILE"
+	elif [ ! -z "$(grep "RG351MP" /home/ark/.config/.DEVICE | tr -d '\0')" ]; then
+	  printf "\nEnabling additional lower scaling frequencies for the RG351MP power savings..\n" | tee -a "$LOG_FILE"
+	  sudo cp -fv /home/ark/rk3326-rg351mp-linux.dtb /boot/. | tee -a "$LOG_FILE"
+	fi
+	sudo rm -fv /home/ark/rk3326-a10mini-linux.dtb /home/ark/rk3326-rg351mp-linux.dtb | tee -a "$LOG_FILE"
+
+	printf "\nDoing some theme updates..\n\n" | tee -a "$LOG_FILE"
+	for theme in es-theme-nes-box es-theme-sagabox es-theme-saganx es-theme-switch
+	do
+	  if [ -d "/roms/themes/$theme" ]; then
+		printf "\nUpdating $theme\n" | tee -a "$LOG_FILE"
+		cd /roms/themes/$theme
+		git fetch origin
+		git reset --hard origin/$(git rev-parse --abbrev-ref HEAD)
+		git pull
+		cd /home/ark
+	  fi
+	done
+
+	if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+	  printf "\nAdd shutdown tasks for remembering panel settings\n" | tee -a "$LOG_FILE"
+	  echo "@reboot /usr/local/bin/panel_set.sh RestoreSettings &" | sudo tee -a /var/spool/cron/crontabs/root
+	  sudo systemctl daemon-reload
+	  sudo systemctl enable shutdowntasks
+	  sudo systemctl restart shutdowntasks
+	else
+	  sudo rm -fv /etc/systemd/system/shutdowntasks.service | tee -a "$LOG_FILE"
+	  sudo rm -fv /usr/local/bin/panel_set.sh | tee -a "$LOG_FILE"
+	fi
+
+	if [ ! -z "$(grep "RG353V" /home/ark/.config/.DEVICE | tr -d '\0')" ] && [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+	  printf "\nRevert RG353V v2 screen changes from last update..\n" | tee -a "$LOG_FILE"
+	  sudo mv -fv /home/ark/rk3566-353v.dtb /boot/. | tee -a "$LOG_FILE"
+	  sudo mv -fv /home/ark/rk3566-353v-notimingchange.dtb /boot/. | tee -a "$LOG_FILE"
+	elif [ ! -z "$(grep "RG353M" /home/ark/.config/.DEVICE | tr -d '\0')" ] && [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+	  printf "\nAdd additonal notimingchange dtb to boot partition..\n" | tee -a "$LOG_FILE"
+	  sudo mv -fv /home/ark/rk3566-353m-notimingchange.dtb /boot/. | tee -a "$LOG_FILE"
+	fi
+	sudo rm -fv /home/ark/rk3566-353* | tee -a "$LOG_FILE"
 
 	printf "\nUpdate boot text to reflect current version of dArkOS\n" | tee -a "$LOG_FILE"
 	sudo sed -i "/title\=/c\title\=dArkOS ($UPDATE_DATE)" /usr/share/plymouth/themes/text.plymouth
