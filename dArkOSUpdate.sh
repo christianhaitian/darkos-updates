@@ -1,4 +1,5 @@
 #!/bin/bash
+
 clear
 UPDATE_DATE="01302026"
 LOG_FILE="/home/ark/update$UPDATE_DATE.log"
