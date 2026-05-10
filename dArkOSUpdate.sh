@@ -1,7 +1,7 @@
 #!/bin/bash
 
 clear
-UPDATE_DATE="05082026"
+UPDATE_DATE="05102026"
 LOG_FILE="/home/ark/update$UPDATE_DATE.log"
 UPDATE_DONE="/home/ark/.config/.update$UPDATE_DATE"
 
@@ -508,6 +508,38 @@ if [ ! -f "/home/ark/.config/.update05082026" ]; then
 	  unlink /home/ark/.emulationstation/music
 	  unlink /etc/emulationstation/music
 	  ln -sfv /roms/bgmusic/ /home/ark/.emulationstation/music
+	fi
+
+	printf "\nUpdate boot text to reflect current version of dArkOS\n" | tee -a "$LOG_FILE"
+	sudo sed -i "/title\=/c\title\=dArkOS ($UPDATE_DATE)" /usr/share/plymouth/themes/text.plymouth
+	echo "$UPDATE_DATE" > /home/ark/.config/.VERSION
+
+	touch "/home/ark/.config/.update05082026"
+
+fi
+
+if [ ! -f "/home/ark/.config/.update05102026" ]; then
+
+	printf "\nAdded audio routing check at boot for rk3566\nFixed missing shebang for dolphin for rk3566\nFixed incomplete symlink for bigpemu\n" | tee -a "$LOG_FILE"
+	sudo rm -rf /dev/shm/*
+	sudo wget -t 3 -T 60 --no-check-certificate "$LOCATION"/05102026/darkosupdate05102026.zip -O /dev/shm/darkosupdate05102026.zip -a "$LOG_FILE" || sudo rm -f /dev/shm/darkosupdate05102026.zip | tee -a "$LOG_FILE"
+	if [ -f "/dev/shm/darkosupdate05102026.zip" ]; then
+	  if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+	    sudo unzip -X -o /dev/shm/darkosupdate05102026.zip -d / | tee -a "$LOG_FILE"
+	    if [[ -z $(sudo grep headphone-audio-switch.sh /var/spool/cron/crontabs/root | tr -d '\0') ]]; then
+	      printf "\nAdd audio routing check at boot\n" | tee -a "$LOG_FILE"
+	      echo "@reboot /usr/local/bin/headphone-audio-switch.sh &" | sudo tee -a /var/spool/cron/crontabs/root
+		fi
+	  else
+	    sudo unzip -X -o /dev/shm/darkosupdate05102026.zip -x usr/local/bin/dolphin.sh -d / | tee -a "$LOG_FILE"
+	  fi
+	  sudo rm -fv /dev/shm/darkosupdate.zip | tee -a "$LOG_FILE"
+	else
+	  printf "\nThe update couldn't complete because the package did not download correctly.\nPlease retry the update again." | tee -a "$LOG_FILE"
+	  sudo rm -fv /dev/shm/darkosupdate05102026.z* | tee -a "$LOG_FILE"
+	  sleep 3
+	  echo $c_brightness > /sys/class/backlight/backlight/brightness
+	  exit 1
 	fi
 
 	printf "\nUpdate boot text to reflect current version of dArkOS\n" | tee -a "$LOG_FILE"
