@@ -1,7 +1,7 @@
 #!/bin/bash
 
 clear
-UPDATE_DATE="05102026"
+UPDATE_DATE="06072026"
 LOG_FILE="/home/ark/update$UPDATE_DATE.log"
 UPDATE_DONE="/home/ark/.config/.update$UPDATE_DATE"
 
@@ -542,6 +542,83 @@ if [ ! -f "/home/ark/.config/.update05102026" ]; then
 	  exit 1
 	fi
 
+	printf "\nUpdate boot text to reflect current version of dArkOS\n" | tee -a "$LOG_FILE"
+	sudo sed -i "/title\=/c\title\=dArkOS ($UPDATE_DATE)" /usr/share/plymouth/themes/text.plymouth
+	echo "$UPDATE_DATE" > /home/ark/.config/.VERSION
+
+	touch "/home/ark/.config/.update05102026"
+
+fi
+
+if [ ! -f "/home/ark/.config/.update06072026" ]; then
+
+	printf "\nUpdated Emulationstation\nUpdated XRoar to 1.11\nUpdated PPSSPP to 1.20.4\nUpdated dArkOS backup and restore scripts\nUpdated auto_suspend.py\nUpdated batt_life_warning.py to fix syntax error\n" | tee -a "$LOG_FILE"
+	sudo rm -rf /dev/shm/*
+	sudo wget -t 3 -T 60 --no-check-certificate "$LOCATION"/06072026/darkosupdate06072026.zip -O /dev/shm/darkosupdate06072026.zip -a "$LOG_FILE" || sudo rm -f /dev/shm/darkosupdate06072026.zip | tee -a "$LOG_FILE"
+	if [ -f "/dev/shm/darkosupdate06072026.zip" ]; then
+	  if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+        sudo unzip -X -o /dev/shm/darkosupdate06072026.zip -d / | tee -a "$LOG_FILE"
+	  else
+        sudo unzip -X -o /dev/shm/darkosupdate06072026.zip -x opt/dolphin/dolphin-emu-nogui -d / | tee -a "$LOG_FILE"
+	  fi
+	else
+	  printf "\nThe update couldn't complete because the package did not download correctly.\nPlease retry the update again." | tee -a "$LOG_FILE"
+	  sudo rm -fv /dev/shm/darkosupdate06072026.z* | tee -a "$LOG_FILE"
+	  sleep 3
+	  echo $c_brightness > /sys/class/backlight/backlight/brightness
+	  exit 1
+	fi
+
+	printf "\nCopy correct PPSSPPSDL for device\n" | tee -a "$LOG_FILE"
+	if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+      rm -fv /opt/ppsspp/PPSSPPSDL.* | tee -a "$LOG_FILE"
+    else
+      mv -fv /opt/ppsspp/PPSSPPSDL.rk3326 /opt/ppsspp/PPSSPPSDL | tee -a "$LOG_FILE"
+	fi
+
+	if [ -f "/boot/rk3326-a10mini-linux.dtb" ] || [ -f "/boot/rk3326-rg351mp-linux.dtb" ] || [ -f "/boot/rk3326-g350-linux.dtb" ]; then
+	  sudo cp -fv /home/ark/batt_life_warning.py.green.rg351mp /usr/local/bin/batt_life_warning.py.green | tee -a "$LOG_FILE"
+	  sudo cp -fv /home/ark/batt_life_warning.py.red.rg351mp /usr/local/bin/batt_life_warning.py.red | tee -a "$LOG_FILE"
+	  sudo cp -fv /home/ark/batt_life_warning.py.rg351mp /usr/local/bin/batt_life_warning.py | tee -a "$LOG_FILE"
+	  sudo chmod 777 /home/ark/batt_life_warning.py*
+	  sudo rm -fv /home/ark/batt_life_warning.py* | tee -a "$LOG_FILE"
+	elif [ -f "/boot/rk3566-rgb30.dtb" ] || [ -f "/boot/rk3566-rgb20pro.dtb" ] || [ -f "/boot/rk3566-rk2023.dtb" ]; then
+	  sudo cp -fv /home/ark/batt_life_warning.py.rgb30 /usr/local/bin/batt_life_warning.py | tee -a "$LOG_FILE"
+	  sudo chmod 777 /home/ark/batt_life_warning.py*
+	  sudo rm -fv /home/ark/batt_life_warning.py* | tee -a "$LOG_FILE"
+	else
+	  sudo rm -fv /home/ark/batt_life_warning.py* | tee -a "$LOG_FILE"
+	fi
+
+	if [ -z "$(grep "RGB10" /home/ark/.config/.DEVICE | tr -d '\0')" ]; then
+	  printf "\nExpose /roms2/themes to ES as additional source for themes\n" | tee -a "$LOG_FILE"
+	  ln -sfv /roms2/themes/ /home/ark/.emulationstation/themes | tee -a "$LOG_FILE"
+	fi
+
+	printf "\nCopy correct emulationstation depending on device\n" | tee -a "$LOG_FILE"
+	if [ -f "/boot/rk3326-a10mini-linux.dtb" ] || [ -f "/boot/rk3326-rg351mp-linux.dtb" ] || [ -f "/boot/rk3326-g350-linux.dtb" ]; then
+	  sudo mv -fv /home/ark/emulationstation.351v /usr/bin/emulationstation/emulationstation | tee -a "$LOG_FILE"
+	  sudo rm -fv /home/ark/emulationstation.* | tee -a "$LOG_FILE"
+	  sudo chmod -v 777 /usr/bin/emulationstation/emulationstation* | tee -a "$LOG_FILE"
+	elif [ -f "/boot/rk3326-odroidgo2-linux.dtb" ] || [ -f "/boot/rk3326-odroidgo2-linux-v11.dtb" ] || [ -f "/boot/rk3326-odroidgo3-linux.dtb" ]; then
+	  sudo cp -fv /home/ark/emulationstation.351v /usr/bin/emulationstation/emulationstation.fullscreen | tee -a "$LOG_FILE"
+	  sudo cp -fv /home/ark/emulationstation.master /usr/bin/emulationstation/emulationstation.header | tee -a "$LOG_FILE"
+	  sudo cp -fv /home/ark/emulationstation.master /usr/bin/emulationstation/emulationstation | tee -a "$LOG_FILE"
+	  sudo rm -fv /home/ark/emulationstation.* | tee -a "$LOG_FILE"
+	  sudo chmod -v 777 /usr/bin/emulationstation/emulationstation* | tee -a "$LOG_FILE"
+	else
+	  sudo mv -fv /home/ark/emulationstation.503 /usr/bin/emulationstation/emulationstation | tee -a "$LOG_FILE"
+	  sudo rm -fv /home/ark/emulationstation.* | tee -a "$LOG_FILE"
+	  sudo chmod -v 777 /usr/bin/emulationstation/emulationstation* | tee -a "$LOG_FILE"
+	fi
+
+	if [ ! -z "$(grep "\-\-config" /etc/emulationstation/es_systems.cfg | tr -d '\0')" ]; then
+	  printf "\nRemove custom config call for Atari 800 and XEGS in emulationstation\n" | tee -a "$LOG_FILE"
+	  cp -v /etc/emulationstation/es_systems.cfg /etc/emulationstation/es_systems.cfg.update06072026.bak
+	  sed -i 's|--config /home/ark/.config/retroarch/config/Atari800/retroarch_A800.cfg ||g' /etc/emulationstation/es_systems.cfg
+	  sed -i 's|--config /home/ark/.config/retroarch/config/Atari800/retroarch_XEGS.cfg ||g' /etc/emulationstation/es_systems.cfg
+	fi
+	
 	printf "\nUpdate boot text to reflect current version of dArkOS\n" | tee -a "$LOG_FILE"
 	sudo sed -i "/title\=/c\title\=dArkOS ($UPDATE_DATE)" /usr/share/plymouth/themes/text.plymouth
 	echo "$UPDATE_DATE" > /home/ark/.config/.VERSION
