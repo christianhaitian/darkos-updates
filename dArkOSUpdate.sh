@@ -1,7 +1,7 @@
 #!/bin/bash
 
 clear
-UPDATE_DATE="06072026"
+UPDATE_DATE="07262026"
 LOG_FILE="/home/ark/update$UPDATE_DATE.log"
 UPDATE_DONE="/home/ark/.config/.update$UPDATE_DATE"
 
@@ -619,6 +619,76 @@ if [ ! -f "/home/ark/.config/.update06072026" ]; then
 	  sed -i 's|--config /home/ark/.config/retroarch/config/Atari800/retroarch_XEGS.cfg ||g' /etc/emulationstation/es_systems.cfg
 	fi
 	
+	printf "\nUpdate boot text to reflect current version of dArkOS\n" | tee -a "$LOG_FILE"
+	sudo sed -i "/title\=/c\title\=dArkOS ($UPDATE_DATE)" /usr/share/plymouth/themes/text.plymouth
+	echo "$UPDATE_DATE" > /home/ark/.config/.VERSION
+
+	touch "/home/ark/.config/.update06072026"
+
+fi
+
+if [ ! -f "/home/ark/.config/.update07262026" ]; then
+
+	printf "\nAdd missing lowresnx retroarch core\nUpdate emulationstation\nAdd batteryplus\nUpdate backup script\nUpdate singe.sh\nAdd italian translation for es\nAdd missing Realtek firmware files\nUpdate ppsspp default controls restore script.\nAdd Italian ES translation\nUpdate Polish ES translation\nUpdated Hypseus-Singe to 2.12.1\nUpdate ScummVM to 2026.3.0\n" | tee -a "$LOG_FILE"
+	sudo rm -rf /dev/shm/*
+	sudo wget -t 3 -T 60 --no-check-certificate "$LOCATION"/07262026/darkosupdate07262026.zip -O /dev/shm/darkosupdate07262026.zip -a "$LOG_FILE" || sudo rm -f /dev/shm/darkosupdate07262026.zip | tee -a "$LOG_FILE"
+	if [ -f "/dev/shm/darkosupdate07262026.zip" ]; then
+      sudo unzip -X -o /dev/shm/darkosupdate07262026.zip -d / | tee -a "$LOG_FILE"
+	else
+	  printf "\nThe update couldn't complete because the package did not download correctly.\nPlease retry the update again." | tee -a "$LOG_FILE"
+	  sudo rm -fv /dev/shm/darkosupdate07262026.z* | tee -a "$LOG_FILE"
+	  sleep 3
+	  echo $c_brightness > /sys/class/backlight/backlight/brightness
+	  exit 1
+	fi
+
+	printf "\nCopy correct emulationstation depending on device\n" | tee -a "$LOG_FILE"
+	if [ -f "/boot/rk3326-a10mini-linux.dtb" ] || [ -f "/boot/rk3326-rg351mp-linux.dtb" ] || [ -f "/boot/rk3326-g350-linux.dtb" ]; then
+	  sudo mv -fv /home/ark/emulationstation.351v /usr/bin/emulationstation/emulationstation | tee -a "$LOG_FILE"
+	  sudo rm -fv /home/ark/emulationstation.* | tee -a "$LOG_FILE"
+	  sudo chmod -v 777 /usr/bin/emulationstation/emulationstation* | tee -a "$LOG_FILE"
+	elif [ -f "/boot/rk3326-odroidgo2-linux.dtb" ] || [ -f "/boot/rk3326-odroidgo2-linux-v11.dtb" ] || [ -f "/boot/rk3326-odroidgo3-linux.dtb" ]; then
+	  sudo cp -fv /home/ark/emulationstation.351v /usr/bin/emulationstation/emulationstation.fullscreen | tee -a "$LOG_FILE"
+	  sudo cp -fv /home/ark/emulationstation.master /usr/bin/emulationstation/emulationstation.header | tee -a "$LOG_FILE"
+	  sudo cp -fv /home/ark/emulationstation.master /usr/bin/emulationstation/emulationstation | tee -a "$LOG_FILE"
+	  sudo rm -fv /home/ark/emulationstation.* | tee -a "$LOG_FILE"
+	  sudo chmod -v 777 /usr/bin/emulationstation/emulationstation* | tee -a "$LOG_FILE"
+	else
+	  sudo mv -fv /home/ark/emulationstation.503 /usr/bin/emulationstation/emulationstation | tee -a "$LOG_FILE"
+	  sudo rm -fv /home/ark/emulationstation.* | tee -a "$LOG_FILE"
+	  sudo chmod -v 777 /usr/bin/emulationstation/emulationstation* | tee -a "$LOG_FILE"
+	fi
+
+	printf "\nCopy correct Hypseus for device\n" | tee -a "$LOG_FILE"
+	if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+	  rm -fv /opt/hypseus-singe/hypseus-singe.rk3326 | tee -a "$LOG_FILE"
+	else
+	  mv -fv /opt/hypseus-singe/hypseus-singe.rk3326 /opt/hypseus-singe/hypseus-singe | tee -a "$LOG_FILE"
+	fi
+
+	printf "\nCopy correct scummvm for device\n" | tee -a "$LOG_FILE"
+	if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+      rm -fv /opt/scummvm/scummvm.rk3326 | tee -a "$LOG_FILE"
+    else
+      mv -fv /opt/scummvm/scummvm.rk3326 /opt/scummvm/scummvm | tee -a "$LOG_FILE"
+	fi
+
+	sudo systemctl daemon-reload
+	sudo systemctl enable batteryplus | tee -a "$LOG_FILE"
+	sudo systemctl start batteryplus
+
+	if test ! -z "$(cat /etc/fstab | grep roms2 | tr -d '\0')"
+	then
+	  sudo sed -i '/roms\//s//roms2\//g' /usr/local/bin/singe.sh
+	fi
+
+	sudo apt update
+	sudo apt -y install firmware-realtek | tee -a "$LOG_FILE"
+
+	#printf "\nUpgraded Debian Trixie OS to version 13.6\n" | tee -a "$LOG_FILE"
+	#sudo apt -y update | tee -a "$LOG_FILE"
+	#sudo apt -y upgrade | tee -a "$LOG_FILE"
+
 	printf "\nUpdate boot text to reflect current version of dArkOS\n" | tee -a "$LOG_FILE"
 	sudo sed -i "/title\=/c\title\=dArkOS ($UPDATE_DATE)" /usr/share/plymouth/themes/text.plymouth
 	echo "$UPDATE_DATE" > /home/ark/.config/.VERSION
