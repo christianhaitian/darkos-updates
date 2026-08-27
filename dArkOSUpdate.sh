@@ -1,7 +1,7 @@
 #!/bin/bash
 
 clear
-UPDATE_DATE="07262026"
+UPDATE_DATE="08272026"
 LOG_FILE="/home/ark/update$UPDATE_DATE.log"
 UPDATE_DONE="/home/ark/.config/.update$UPDATE_DATE"
 
@@ -406,8 +406,8 @@ if [ ! -f "/home/ark/.config/.update01302026" ]; then
 	sudo rm -fv /home/ark/rk3566-353* | tee -a "$LOG_FILE"
 
 	printf "\nUpdate boot text to reflect current version of dArkOS\n" | tee -a "$LOG_FILE"
-	sudo sed -i "/title\=/c\title\=dArkOS ($UPDATE_DATE)" /usr/share/plymouth/themes/text.plymouth
-	echo "$UPDATE_DATE" > /home/ark/.config/.VERSION
+	sudo sed -i "/title\=/c\title\=dArkOS (01302026)" /usr/share/plymouth/themes/text.plymouth
+	echo "01302026" > /home/ark/.config/.VERSION
 
 	touch "/home/ark/.config/.update01302026"
 
@@ -688,6 +688,158 @@ if [ ! -f "/home/ark/.config/.update07262026" ]; then
 	#printf "\nUpgraded Debian Trixie OS to version 13.6\n" | tee -a "$LOG_FILE"
 	#sudo apt -y update | tee -a "$LOG_FILE"
 	#sudo apt -y upgrade | tee -a "$LOG_FILE"
+
+	printf "\nUpdate boot text to reflect current version of dArkOS\n" | tee -a "$LOG_FILE"
+	sudo sed -i "/title\=/c\title\=dArkOS ($UPDATE_DATE)" /usr/share/plymouth/themes/text.plymouth
+	echo "$UPDATE_DATE" > /home/ark/.config/.VERSION
+
+	touch "/home/ark/.config/.update07262026"
+
+fi
+
+if [ ! -f "/home/ark/.config/.update08272026" ]; then
+
+	printf "\nFix many daphne games not loading\nAdd ability to disable kid/kiosk mode for the a10 mini\nFix backup and restore settings for BaRT\nFix parallel_n64 core for retroarch32\nUpdate libmali to g29p1 for rk3566\nUpdate flycastsa for rk3566\nUpdated batteryplus\nUpdate emulationstation.service to add limitnice setting\n" | tee -a "$LOG_FILE"
+	sudo rm -rf /dev/shm/*
+	sudo wget -t 3 -T 60 --no-check-certificate "$LOCATION"/08272026/darkosupdate08272026.zip -O /dev/shm/darkosupdate08272026.zip -a "$LOG_FILE" || sudo rm -f /dev/shm/darkosupdate08272026.zip | tee -a "$LOG_FILE"
+	if [ -f "/dev/shm/darkosupdate08272026.zip" ]; then
+	  if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+        sudo unzip -X -o /dev/shm/darkosupdate08272026.zip -d / | tee -a "$LOG_FILE"
+	  else
+        sudo unzip -X -o /dev/shm/darkosupdate08272026.zip -x home/ark/ffmpeg.tar.gz -x usr/local/bin/dtbcheck_change.sh -x home/ark/kodi-gbm -x opt/flycastsa/flycast -x home/ark/*.miniloong -x home/ark/sdl2-64/* -d / | tee -a "$LOG_FILE"
+	  fi
+	else
+	  printf "\nThe update couldn't complete because the package did not download correctly.\nPlease retry the update again." | tee -a "$LOG_FILE"
+	  sudo rm -fv /dev/shm/darkosupdate08272026.z* | tee -a "$LOG_FILE"
+	  sleep 3
+	  echo $c_brightness > /sys/class/backlight/backlight/brightness
+	  exit 1
+	fi
+
+	DEVICE=$(cat /home/ark/.config/.DEVICE)
+	if [[ $DEVICE == *"353"* ]]; then
+	  sudo cp -fv /home/ark/emulationstation.sh.353m /usr/bin/emulationstation/emulationstation.sh | tee -a "$LOG_FILE"
+	elif [[ $DEVICE == "A10MINI" ]]; then
+	  sudo cp -fv /home/ark/emulationstation.sh.a10mini /usr/bin/emulationstation/emulationstation.sh | tee -a "$LOG_FILE"
+	elif [[ $DEVICE == "RGB10" ]]; then
+	  sudo cp -fv /home/ark/emulationstation.sh.rgb10 /usr/bin/emulationstation/emulationstation.sh | tee -a "$LOG_FILE"
+	elif [[ $DEVICE == "RG503" ]]; then
+	  sudo cp -fv /home/ark/emulationstation.sh.503 /usr/bin/emulationstation/emulationstation.sh | tee -a "$LOG_FILE"	  
+	elif [[ $DEVICE == "RG351MP" ]]; then
+	  sudo cp -fv /home/ark/emulationstation.sh.rg351mp /usr/bin/emulationstation/emulationstation.sh | tee -a "$LOG_FILE"
+	elif [[ $DEVICE == "RGB20PRO" ]]; then
+	  sudo cp -fv /home/ark/emulationstation.sh.rgb20pro /usr/bin/emulationstation/emulationstation.sh | tee -a "$LOG_FILE"	  
+	elif [[ $DEVICE == "RK2023" ]]; then
+	  sudo cp -fv /home/ark/emulationstation.sh.rk2023 /usr/bin/emulationstation/emulationstation.sh | tee -a "$LOG_FILE"
+	elif [[ $DEVICE == "RGB30" ]]; then
+	  sudo cp -fv /home/ark/emulationstation.sh.rgb30 /usr/bin/emulationstation/emulationstation.sh | tee -a "$LOG_FILE"
+	elif [[ $DEVICE == "MINILOONG" ]]; then
+	  sudo cp -fv /home/ark/emulationstation.sh.miniloong /usr/bin/emulationstation/emulationstation.sh | tee -a "$LOG_FILE"
+	elif [[ $DEVICE == "G350" ]]; then
+	  sudo cp -fv /home/ark/emulationstation.sh.g350 /usr/bin/emulationstation/emulationstation.sh | tee -a "$LOG_FILE"
+	fi
+	rm -fv /home/ark/emulationstation.sh.* | tee -a "$LOG_FILE"
+
+	if [[ $DEVICE == "MINILOONG" ]]; then
+	  printf "\nUpdate resource and uboot for the Miniloong Pocket 1\n" | tee -a "$LOG_FILE"
+	  sudo dd if=/home/ark/uboot.img.miniloong of=/dev/mmcblk1 bs=512 seek=16384 conv=notrunc
+	  sudo dd if=/home/ark/resource.img.miniloong of=/dev/mmcblk1 bs=512 seek=24576 conv=notrunc
+	  sudo cp -fv /home/ark/rk3566-miniloong.dtb.miniloong /boot/rk3566-miniloong.dtb | tee -a "$LOG_FILE"
+	  sudo cp -fv /home/ark/Image.miniloong /boot/Image | tee -a "$LOG_FILE"
+	  CURRENT_DTB="$(grep FDT /boot/extlinux/extlinux.conf | cut -c 8-)"
+	  BASE_DTB_NAME=`echo ${CURRENT_DTB} | sed 's/.undervolt.*//'`
+	  sudo sed -i "/  FDT \/$CURRENT_DTB/c\  FDT \/${BASE_DTB_NAME}" /boot/extlinux/extlinux.conf
+	  sudo rm -fv /boot/rk3566-miniloong.dtb.undervolt* | tee -a "$LOG_FILE"
+	  rm -fv /home/ark/*.miniloong | tee -a "$LOG_FILE"
+	elif [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+	  printf "\nThis unit is not a Miniloong Pocket 1.  Removing unneccessary files from this update and moving on...\n" | tee -a "$LOG_FILE"
+	  rm -fv /home/ark/*.miniloong | tee -a "$LOG_FILE"
+	fi
+
+	printf "\nCopy correct parallel_n64 32bit core depending on chipset\n" | tee -a "$LOG_FILE"
+	if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+	  rm -fv /home/ark/.config/retroarch32/cores/parallel_n64_libretro.so.rk3326 | tee -a "$LOG_FILE"
+	else
+	  cp -fv /home/ark/.config/retroarch32/cores/parallel_n64_libretro.so.rk3326 /home/ark/.config/retroarch32/cores/parallel_n64_libretro.so | tee -a "$LOG_FILE"
+	  rm -fv /home/ark/.config/retroarch32/cores/parallel_n64_libretro.so.rk3326 | tee -a "$LOG_FILE"
+	fi
+
+	printf "\nUpdating retrorun and retrorun32...\n" | tee -a "$LOG_FILE"
+	if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+	  if [[ $DEVICE == "MINILOONG" ]]; then
+	    cp -fv /home/ark/retrorun/retrorun-miniloong /usr/local/bin/retrorun | tee -a "$LOG_FILE"
+	    cp -fv /home/ark/retrorun/retrorun32-miniloong /usr/local/bin/retrorun32 | tee -a "$LOG_FILE"
+	  else
+	    cp -fv /home/ark/retrorun/retrorun.rk3566 /usr/local/bin/retrorun | tee -a "$LOG_FILE"
+	    cp -fv /home/ark/retrorun/retrorun32.rk3566 /usr/local/bin/retrorun32 | tee -a "$LOG_FILE"
+	  fi
+	else
+	  cp -fv /home/ark/retrorun/retrorun.rk3326 /usr/local/bin/retrorun | tee -a "$LOG_FILE"
+	  cp -fv /home/ark/retrorun/retrorun32.rk3326 /usr/local/bin/retrorun32 | tee -a "$LOG_FILE"
+	fi
+	sudo chmod 777 /usr/local/bin/retrorun*
+	rm -rfv /home/ark/retrorun/ | tee -a "$LOG_FILE"
+
+	if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+	  printf "\nUpdating libmali to gp29p1 for 64bit only\n" | tee -a "$LOG_FILE"
+	  sudo cp -fv /home/ark/sdl2-64/libmali-bifrost-g52-g29p1.so /usr/lib/aarch64-linux-gnu/. | tee -a "$LOG_FILE"
+	  if [[ $DEVICE == "MINILOONG" ]]; then
+	    sudo cp -fv /home/ark/sdl2-64/libSDL2-2.0.so.0.3200.10.rotated /usr/lib/aarch64-linux-gnu/libSDL2-2.0.so.0.3200.10 | tee -a "$LOG_FILE"
+	  else
+	    sudo cp -fv /home/ark/sdl2-64/libSDL2-2.0.so.0.3200.10 /usr/lib/aarch64-linux-gnu/libSDL2-2.0.so.0.3200.10 | tee -a "$LOG_FILE"
+	  fi
+	  cd /usr/lib/aarch64-linux-gnu/
+	  sudo ln -sfv libmali-bifrost-g52-g29p1.so libMali.so | tee -a "$LOG_FILE"
+	  cd /home/ark
+	  rm -rfv /home/ark/sdl2-64 | tee -a "$LOG_FILE"
+	  printf "\nUpdating ffmpeg...\n" | tee -a "$LOG_FILE"
+	  sudo tar -xvzf ffmpeg.tar.gz -C / --strip-components=1 | tee -a "$LOG_FILE"
+	  rm -fv ffmpeg.tar.gz | tee -a "$LOG_FILE"
+	  if [[ -d "/opt/kodi" ]]; then
+	    printf "\nCopying updated kodi-gbm for existing kodi install...\n" | tee -a "$LOG_FILE"
+		mv -fv /home/ark/kodi-gbm /opt/kodi/lib/kodi/kodi-gbm | tee -a "$LOG_FILE"
+		chmod 777 /opt/kodi/lib/kodi/kodi-gbm
+	  else
+	    printf "\nNo Kodi install found.  Removing kodi-gbm from update package...\n" | tee -a "$LOG_FILE"
+		rm -fv /home/ark/kodi-gbm | tee -a "$LOG_FILE"
+	  fi
+	fi
+
+	sudo systemctl daemon-reload
+
+	printf "\nUpgraded Debian Trixie OS to version 13.6\n" | tee -a "$LOG_FILE"
+	sudo apt -y update | tee -a "$LOG_FILE"
+	sudo apt -y upgrade | tee -a "$LOG_FILE"
+	sudo apt -y install libcurl4t64:armhf | tee -a "$LOG_FILE"
+
+	printf "\nEnsure libMali symlinks are still intact\n" | tee -a "$LOG_FILE"
+	cd /usr/lib/arm-linux-gnueabihf
+	for LIB in libEGL.so libEGL.so.1 libEGL.so.1.1.0 libGLES_CM.so libGLES_CM.so.1 libGLESv1_CM.so libGLESv1_CM.so.1 libGLESv1_CM.so.1.1.0 libGLESv2.so libGLESv2.so.2 libGLESv2.so.2.0.0 libGLESv2.so.2.1.0 libGLESv3.so libGLESv3.so.3 libgbm.so libgbm.so.1 libgbm.so.1.0.0 libmali.so libmali.so.1 libMaliOpenCL.so libOpenCL.so libOpenCL.so libwayland-egl.so libwayland-egl.so.1 libwayland-egl.so.1.0.0
+	do
+	  sudo rm -fv ${LIB} | tee -a "$LOG_FILE"
+	  sudo ln -sfv libMali.so ${LIB} | tee -a "$LOG_FILE"
+	done
+	cd /usr/lib/aarch64-linux-gnu
+	for LIB in libEGL.so libEGL.so.1 libEGL.so.1.1.0 libGLES_CM.so libGLES_CM.so.1 libGLESv1_CM.so libGLESv1_CM.so.1 libGLESv1_CM.so.1.1.0 libGLESv2.so libGLESv2.so.2 libGLESv2.so.2.0.0 libGLESv2.so.2.1.0 libGLESv3.so libGLESv3.so.3 libgbm.so libgbm.so.1 libgbm.so.1.0.0 libmali.so libmali.so.1 libMaliOpenCL.so libOpenCL.so libOpenCL.so.1 libwayland-egl.so libwayland-egl.so.1 libwayland-egl.so.1.0.0
+	do
+	  sudo rm -fv ${LIB} | tee -a "$LOG_FILE"
+	  sudo ln -sfv libMali.so ${LIB} | tee -a "$LOG_FILE"
+	done
+	cd /home/ark
+	sudo ldconfig -X
+
+	if [[ $DEVICE == "MINILOONG" ]]; then
+	  printf "\nUpdate sleep script to speed up screen on time when waking from sleep\n" | tee -a "$LOG_FILE"
+	  sudo sed -i '\#/usr/local/bin/miniloong-led-mode.sh#d' /usr/lib/systemd/system-sleep/sleep
+	  sudo sed -i '/RestoreSettingsOnWake/a\    \/usr\/local\/bin\/miniloong-led-mode.sh &' /usr/lib/systemd/system-sleep/sleep
+	  printf "\nUpdating retroarch to use proper rotation for the vulkan driver\n" | tee -a "$LOG_FILE"
+	  cp -fv /home/ark/retroarch/retroarch-rgarotated.rk3566 /opt/retroarch/bin/retroarch | tee -a "$LOG_FILE"
+	  chmod 777 /opt/retroarch/bin/retroarch*
+	  sudo rm -rfv /home/ark/retroarch/ | tee -a "$LOG_FILE"
+	else
+	  printf "\nThis is not a miniloong pocket 1.  Removing unneeded retroarch update from this package\n" | tee -a "$LOG_FILE"
+	  sudo rm -rfv /home/ark/retroarch/ | tee -a "$LOG_FILE"
+	fi
 
 	printf "\nUpdate boot text to reflect current version of dArkOS\n" | tee -a "$LOG_FILE"
 	sudo sed -i "/title\=/c\title\=dArkOS ($UPDATE_DATE)" /usr/share/plymouth/themes/text.plymouth
