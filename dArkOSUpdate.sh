@@ -812,22 +812,6 @@ if [ ! -f "/home/ark/.config/.update08272026" ]; then
 	sudo apt -y upgrade | tee -a "$LOG_FILE"
 	sudo apt -y install libcurl4t64:armhf | tee -a "$LOG_FILE"
 
-	printf "\nEnsure libMali symlinks are still intact\n" | tee -a "$LOG_FILE"
-	cd /usr/lib/arm-linux-gnueabihf
-	for LIB in libEGL.so libEGL.so.1 libEGL.so.1.1.0 libGLES_CM.so libGLES_CM.so.1 libGLESv1_CM.so libGLESv1_CM.so.1 libGLESv1_CM.so.1.1.0 libGLESv2.so libGLESv2.so.2 libGLESv2.so.2.0.0 libGLESv2.so.2.1.0 libGLESv3.so libGLESv3.so.3 libgbm.so libgbm.so.1 libgbm.so.1.0.0 libmali.so libmali.so.1 libMaliOpenCL.so libOpenCL.so libOpenCL.so libwayland-egl.so libwayland-egl.so.1 libwayland-egl.so.1.0.0
-	do
-	  sudo rm -fv ${LIB} | tee -a "$LOG_FILE"
-	  sudo ln -sfv libMali.so ${LIB} | tee -a "$LOG_FILE"
-	done
-	cd /usr/lib/aarch64-linux-gnu
-	for LIB in libEGL.so libEGL.so.1 libEGL.so.1.1.0 libGLES_CM.so libGLES_CM.so.1 libGLESv1_CM.so libGLESv1_CM.so.1 libGLESv1_CM.so.1.1.0 libGLESv2.so libGLESv2.so.2 libGLESv2.so.2.0.0 libGLESv2.so.2.1.0 libGLESv3.so libGLESv3.so.3 libgbm.so libgbm.so.1 libgbm.so.1.0.0 libmali.so libmali.so.1 libMaliOpenCL.so libOpenCL.so libOpenCL.so.1 libwayland-egl.so libwayland-egl.so.1 libwayland-egl.so.1.0.0
-	do
-	  sudo rm -fv ${LIB} | tee -a "$LOG_FILE"
-	  sudo ln -sfv libMali.so ${LIB} | tee -a "$LOG_FILE"
-	done
-	cd /home/ark
-	sudo ldconfig -X
-
 	if [[ $DEVICE == "MINILOONG" ]]; then
 	  printf "\nUpdate sleep script to speed up screen on time when waking from sleep\n" | tee -a "$LOG_FILE"
 	  sudo sed -i '\#/usr/local/bin/miniloong-led-mode.sh#d' /usr/lib/systemd/system-sleep/sleep
@@ -846,10 +830,27 @@ if [ ! -f "/home/ark/.config/.update08272026" ]; then
 	echo "$UPDATE_DATE" > /home/ark/.config/.VERSION
 
 	touch "$UPDATE_DONE"
+	echo $c_brightness > /sys/class/backlight/backlight/brightness
 	rm -v -- "$0" | tee -a "$LOG_FILE"
+
+	printf "\nEnsure libMali symlinks are still intact\n" | tee -a "$LOG_FILE"
+	cd /usr/lib/arm-linux-gnueabihf
+	for LIB in libEGL.so libEGL.so.1 libEGL.so.1.1.0 libGLES_CM.so libGLES_CM.so.1 libGLESv1_CM.so libGLESv1_CM.so.1 libGLESv1_CM.so.1.1.0 libGLESv2.so libGLESv2.so.2 libGLESv2.so.2.0.0 libGLESv2.so.2.1.0 libGLESv3.so libGLESv3.so.3 libgbm.so libgbm.so.1 libgbm.so.1.0.0 libmali.so libmali.so.1 libMaliOpenCL.so libOpenCL.so libOpenCL.so libwayland-egl.so libwayland-egl.so.1 libwayland-egl.so.1.0.0
+	do
+	  sudo rm -fv ${LIB} | tee -a "$LOG_FILE"
+	  sudo ln -sfv libMali.so ${LIB} | tee -a "$LOG_FILE"
+	done
+	cd /usr/lib/aarch64-linux-gnu
+	for LIB in libEGL.so libEGL.so.1 libEGL.so.1.1.0 libGLES_CM.so libGLES_CM.so.1 libGLESv1_CM.so libGLESv1_CM.so.1 libGLESv1_CM.so.1.1.0 libGLESv2.so libGLESv2.so.2 libGLESv2.so.2.0.0 libGLESv2.so.2.1.0 libGLESv3.so libGLESv3.so.3 libgbm.so libgbm.so.1 libgbm.so.1.0.0 libmali.so libmali.so.1 libMaliOpenCL.so libOpenCL.so libOpenCL.so.1 libwayland-egl.so libwayland-egl.so.1 libwayland-egl.so.1.0.0
+	do
+	  sudo rm -fv ${LIB} | tee -a "$LOG_FILE"
+	  sudo ln -sfv libMali.so ${LIB} | tee -a "$LOG_FILE"
+	done
+	cd /home/ark
+	sudo ldconfig -X
+
 	printf "\033c" >> /dev/tty1
 	msgbox "Updates have been completed.  System will now restart after you hit the A button to continue.  If the system doesn't restart after pressing A, just restart the system manually."
-	echo $c_brightness > /sys/class/backlight/backlight/brightness
 	sudo reboot
 	exit 187
 
