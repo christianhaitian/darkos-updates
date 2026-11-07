@@ -1,7 +1,7 @@
 #!/bin/bash
 
 clear
-UPDATE_DATE="08272026"
+UPDATE_DATE="11072026"
 LOG_FILE="/home/ark/update$UPDATE_DATE.log"
 UPDATE_DONE="/home/ark/.config/.update$UPDATE_DATE"
 
@@ -829,9 +829,7 @@ if [ ! -f "/home/ark/.config/.update08272026" ]; then
 	sudo sed -i "/title\=/c\title\=dArkOS ($UPDATE_DATE)" /usr/share/plymouth/themes/text.plymouth
 	echo "$UPDATE_DATE" > /home/ark/.config/.VERSION
 
-	touch "$UPDATE_DONE"
-	echo $c_brightness > /sys/class/backlight/backlight/brightness
-	rm -v -- "$0" | tee -a "$LOG_FILE"
+	touch "/home/ark/.config/.update08272026"
 
 	printf "\nEnsure libMali symlinks are still intact\n" | tee -a "$LOG_FILE"
 	cd /usr/lib/arm-linux-gnueabihf
@@ -849,8 +847,223 @@ if [ ! -f "/home/ark/.config/.update08272026" ]; then
 	cd /home/ark
 	sudo ldconfig -X
 
+fi
+
+if [ ! -f "/home/ark/.config/.update11072026" ]; then
+
+	printf "\nFix Retroarch for hdmi for rk3566\nUpdate Linapple standalone emulator\nReduce boot time in welcome-message.service\nUpdated Emulationstation translation for Spanish\nAdded Turkish translation for Emulationstation\nUpdated batteryplus\nReplace yabasanshiro standalone with yabasanshiro-pirry\nAdd DSperate emulator\nAdd yabadabadoo 32bit libretro core\nAdded Azahar for rk3566 only\nUpdate miniloong dtb to fix refresh rates\nUpdated solarus to 2.1.4\n" | tee -a "$LOG_FILE"
+	sudo rm -rf /dev/shm/*
+	sudo wget -t 3 -T 60 --no-check-certificate "$LOCATION"/11072026/darkosupdate11072026.zip -O /dev/shm/darkosupdate11072026.zip -a "$LOG_FILE" || sudo rm -f /dev/shm/darkosupdate11072026.zip | tee -a "$LOG_FILE"
+	sudo wget -t 3 -T 60 --no-check-certificate "$LOCATION"/11072026/darkosupdate11072026.z01 -O /dev/shm/darkosupdate11072026.z01 -a "$LOG_FILE" || sudo rm -f /dev/shm/darkosupdate11072026.z01 | tee -a "$LOG_FILE"
+	sudo wget -t 3 -T 60 --no-check-certificate "$LOCATION"/11072026/darkosupdate11072026.z02 -O /dev/shm/darkosupdate11072026.z02 -a "$LOG_FILE" || sudo rm -f /dev/shm/darkosupdate11072026.z02 | tee -a "$LOG_FILE"
+	if [ -f "/dev/shm/darkosupdate11072026.zip" ] && [ -f "/dev/shm/darkosupdate11072026.z01" ] && [ -f "/dev/shm/darkosupdate11072026.z02" ]; then
+	  zip -FF /dev/shm/darkosupdate11072026.zip --out /dev/shm/darkosupdate.zip -fz | tee -a "$LOG_FILE"
+	  sudo rm -fv /dev/shm/darkosupdate11072026.z* | tee -a "$LOG_FILE"
+	  if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+        sudo unzip -X -o /dev/shm/darkosupdate.zip -x "home/ark/.config/duckstation/*" -x usr/local/bin/standalone-duckstation-old opt/duckstation/duckstation-nogui* -d / | tee -a "$LOG_FILE"
+	  else
+        sudo unzip -X -o /dev/shm/darkosupdate.zip -x home/ark/*.miniloong home/ark/.config/retroarch/cores/azahar_libretro* opt/retroarch/bin/retroarch* -d / | tee -a "$LOG_FILE"
+	  fi
+	else
+	  printf "\nThe update couldn't complete because the package did not download correctly.\nPlease retry the update again." | tee -a "$LOG_FILE"
+	  sudo rm -fv /dev/shm/darkosupdate11072026.z* | tee -a "$LOG_FILE"
+	  sleep 3
+	  echo $c_brightness > /sys/class/backlight/backlight/brightness
+	  exit 1
+	fi
+
+	DEVICE=$(cat /home/ark/.config/.DEVICE)
+
+	printf "\nCopy correct dsperate and related settings depending on device and chipset\n" | tee -a "$LOG_FILE"
+	if [[ $DEVICE == "MINILOONG" ]]; then
+	  cp -fv /opt/DSperate/config/dsperate.ini.miniloong /opt/DSperate/config/dsperate.ini | tee -a "$LOG_FILE"
+	  cp -fv /opt/DSperate/dsperate-rk3566 /opt/DSperate/dsperate | tee -a "$LOG_FILE"
+	  rm -fv /opt/DSperate/dsperate-* | tee -a "$LOG_FILE"
+	  rm -fv /opt/DSperate/config/dsperate.ini.* | tee -a "$LOG_FILE"
+	elif [[ $DEVICE == "A10MINI" ]]; then
+	  cp -fv /opt/DSperate/config/dsperate.ini.a10mini /opt/DSperate/config/dsperate.ini | tee -a "$LOG_FILE"
+	  cp -fv /opt/DSperate/dsperate-rk3326 /opt/DSperate/dsperate | tee -a "$LOG_FILE"
+	  rm -fv /opt/DSperate/dsperate-* | tee -a "$LOG_FILE"
+	  rm -fv /opt/DSperate/config/dsperate.ini.* | tee -a "$LOG_FILE"
+	elif [[ $DEVICE == "RGB10" ]]; then
+	  cp -fv /opt/DSperate/config/dsperate.ini.rgb10 /opt/DSperate/config/dsperate.ini | tee -a "$LOG_FILE"
+	  cp -fv /opt/DSperate/dsperate-rk3326 /opt/DSperate/dsperate | tee -a "$LOG_FILE"
+	  rm -fv /opt/DSperate/dsperate-* | tee -a "$LOG_FILE"
+	  rm -fv /opt/DSperate/config/dsperate.ini.* | tee -a "$LOG_FILE"
+	elif [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+	  cp -fv /opt/DSperate/config/dsperate.ini.rk3566 /opt/DSperate/config/dsperate.ini | tee -a "$LOG_FILE"
+	  cp -fv /opt/DSperate/dsperate-rk3566 /opt/DSperate/dsperate | tee -a "$LOG_FILE"
+	  rm -fv /opt/DSperate/dsperate-* | tee -a "$LOG_FILE"
+	  rm -fv /opt/DSperate/config/dsperate.ini.* | tee -a "$LOG_FILE"
+	else
+	  cp -fv /opt/DSperate/config/dsperate.ini.rk3326 /opt/DSperate/config/dsperate.ini | tee -a "$LOG_FILE"
+	  cp -fv /opt/DSperate/dsperate-rk3326 /opt/DSperate/dsperate | tee -a "$LOG_FILE"
+	  rm -fv /opt/DSperate/dsperate-* | tee -a "$LOG_FILE"
+	  rm -fv /opt/DSperate/config/dsperate.ini.* | tee -a "$LOG_FILE"
+	fi
+	sudo chmod 777 /opt/DSperate/dsperate
+	sudo chown -R ark:ark /opt/DSperate/
+
+	if [[ $DEVICE == "MINILOONG" ]]; then
+	  printf "\nUpdate the dtb to fix 90hz and 120hz support for the Miniloong Pocket 1\n" | tee -a "$LOG_FILE"
+	  sudo cp -fv /home/ark/rk3566-miniloong.dtb.miniloong /boot/rk3566-miniloong.dtb | tee -a "$LOG_FILE"
+	  CURRENT_DTB="$(grep FDT /boot/extlinux/extlinux.conf | cut -c 8-)"
+	  BASE_DTB_NAME=`echo ${CURRENT_DTB} | sed 's/.undervolt.*//'`
+	  sudo sed -i "/  FDT \/$CURRENT_DTB/c\  FDT \/${BASE_DTB_NAME}" /boot/extlinux/extlinux.conf
+	  sudo rm -fv /boot/rk3566-miniloong.dtb.undervolt* | tee -a "$LOG_FILE"
+	  rm -fv /home/ark/*.miniloong | tee -a "$LOG_FILE"
+	elif [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+	  printf "\nThis unit is not a Miniloong Pocket 1.  Removing unneccessary files from this update and moving on...\n" | tee -a "$LOG_FILE"
+	  rm -fv /home/ark/*.miniloong | tee -a "$LOG_FILE"
+	fi
+
+	printf "\nCopy correct emulationstation settings depending on chipset\n" | tee -a "$LOG_FILE"
+	cp -v /etc/emulationstation/es_systems.cfg /etc/emulationstation/es_systems.cfg.update11072026.bak
+	if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+	  cp -f /etc/emulationstation/es_systems.cfg.rk3566 /etc/emulationstation/es_systems.cfg
+	  rm -f /etc/emulationstation/es_systems.cfg.rk*
+	  mkdir -p /roms/3ds
+	  if test ! -z "$(cat /etc/fstab | grep roms2 | tr -d '\0')"
+	  then
+	    mkdir -p /roms2/3ds
+	  fi
+	else
+	  cp -f /etc/emulationstation/es_systems.cfg.rk3326 /etc/emulationstation/es_systems.cfg
+	  rm -f /etc/emulationstation/es_systems.cfg.rk*
+	fi
+	if test ! -z "$(cat /etc/fstab | grep roms2 | tr -d '\0')"
+	then
+ 	  printf "\nAccomodate for roms2 with new es_systems.cfg file...\n" | tee -a "$LOG_FILE"
+	  sed -i '/<path>\/roms\//s//<path>\/roms2\//g' /etc/emulationstation/es_systems.cfg
+	fi
+
+	if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3326"* ]]; then
+	  sudo apt update -y | tee -a "$LOG_FILE"
+	  sudo apt -y install --reinstall libvulkan1 | tee -a "$LOG_FILE"
+
+	  printf "\nEnsure libMali symlinks are properly intact\n" | tee -a "$LOG_FILE"
+	  cd /usr/lib/arm-linux-gnueabihf
+	  for LIB in libEGL.so libEGL.so.1 libEGL.so.1.1.0 libGLES_CM.so libGLES_CM.so.1 libGLESv1_CM.so libGLESv1_CM.so.1 libGLESv1_CM.so.1.1.0 libGLESv2.so libGLESv2.so.2 libGLESv2.so.2.0.0 libGLESv2.so.2.1.0 libGLESv3.so libGLESv3.so.3 libgbm.so libgbm.so.1 libgbm.so.1.0.0 libmali.so libmali.so.1 libMaliOpenCL.so libwayland-egl.so libwayland-egl.so.1 libwayland-egl.so.1.0.0
+	  do
+	    sudo rm -fv ${LIB} | tee -a "$LOG_FILE"
+	    sudo ln -sfv libMali.so ${LIB} | tee -a "$LOG_FILE"
+	  done
+	  cd /usr/lib/aarch64-linux-gnu
+	  for LIB in libEGL.so libEGL.so.1 libEGL.so.1.1.0 libGLES_CM.so libGLES_CM.so.1 libGLESv1_CM.so libGLESv1_CM.so.1 libGLESv1_CM.so.1.1.0 libGLESv2.so libGLESv2.so.2 libGLESv2.so.2.0.0 libGLESv2.so.2.1.0 libGLESv3.so libGLESv3.so.3 libgbm.so libgbm.so.1 libgbm.so.1.0.0 libmali.so libmali.so.1 libMaliOpenCL.so libwayland-egl.so libwayland-egl.so.1 libwayland-egl.so.1.0.0
+	  do
+	    sudo rm -fv ${LIB} | tee -a "$LOG_FILE"
+	    sudo ln -sfv libMali.so ${LIB} | tee -a "$LOG_FILE"
+	  done
+	  cd /home/ark
+	  sudo ldconfig -X
+	fi
+
+	if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3326"* ]]; then
+	  printf "\nRevert to older standalone duckstation...\n" | tee -a "$LOG_FILE"
+	  rm -fv /opt/duckstation/duckstationsa | tee -a "$LOG_FILE"
+	  sudo cp -fv /usr/local/bin/standalone-duckstation-old /usr/local/bin/standalone-duckstation | tee -a "$LOG_FILE"
+	  sudo rm -fv /usr/local/bin/standalone-duckstation-old | tee -a "$LOG_FILE"
+	  cp -fv /home/ark/.local/share/duckstation/settings.ini /home/ark/.config/duckstation/. | tee -a "$LOG_FILE"
+	  if [ ! -z "$(grep "RGB10" /home/ark/.config/.DEVICE | tr -d '\0')" ]; then
+		cp -fv /opt/duckstation/duckstation-nogui.chirgb10 /opt/duckstation/duckstation-nogui | tee -a "$LOG_FILE"
+	  fi
+	  rm -fv /opt/duckstation/duckstation-nogui.chirgb10 | tee -a "$LOG_FILE"
+	fi
+
+	printf "\nCopy correct yabadabadoo 32bit core depending on chipset\n" | tee -a "$LOG_FILE"
+	if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+	  rm -f /home/ark/.config/retroarch32/cores/yabadabadoo_libretro.so.rk3326
+	else
+	  cp -f /home/ark/.config/retroarch32/cores/yabadabadoo_libretro.so.rk3326 /home/ark/.config/retroarch32/cores/yabadabadoo_libretro.so
+	  rm -f /home/ark/.config/retroarch32/cores/yabadabadoo_libretro.so.rk3326
+	fi
+
+	printf "\nCopy correct armgba 64bit core depending on chipset\n" | tee -a "$LOG_FILE"
+	if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+	  rm -f /home/ark/.config/retroarch/cores/armgba_libretro.so.rk3326
+	else
+	  cp -f /home/ark/.config/retroarch/cores/armgba_libretro.so.rk3326 /home/ark/.config/retroarch/cores/armgba_libretro.so
+	  rm -f /home/ark/.config/retroarch/cores/armgba_libretro.so.rk3326
+	fi
+
+	sudo chown -R ark:ark /opt
+	printf "\nCopy correct yabasanshiro emulator depending on chipset\n" | tee -a "$LOG_FILE"
+	if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+	  rm -fv /opt/yabasanshiro/yabasanshiro.* | tee -a "$LOG_FILE"
+	elif [ ! -z "$(grep "RGB10" /home/ark/.config/.DEVICE | tr -d '\0')" ]; then
+	  cp -fv /opt/yabasanshiro/yabasanshiro.rk3326.oga /opt/yabasanshiro/yabasanshiro | tee -a "$LOG_FILE"
+	  rm -fv /opt/yabasanshiro/yabasanshiro.* | tee -a "$LOG_FILE"
+	else
+	  cp -fv /opt/yabasanshiro/yabasanshiro.rk3326 /opt/yabasanshiro/yabasanshiro | tee -a "$LOG_FILE"
+	  rm -fv /opt/yabasanshiro/yabasanshiro.* | tee -a "$LOG_FILE"
+	fi
+
+	printf "\nCopy correct scummvm for device\n" | tee -a "$LOG_FILE"
+	if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+      rm -fv /opt/scummvm/scummvm.rk3326 | tee -a "$LOG_FILE"
+    else
+      mv -fv /opt/scummvm/scummvm.rk3326 /opt/scummvm/scummvm | tee -a "$LOG_FILE"
+	fi
+
+	printf "\nInstall some needed packages for sdl3\n" | tee -a "$LOG_FILE"
+	sudo apt update -y | tee -a "$LOG_FILE"
+	sudo apt install -y libsdl3-image0 libsdl3-ttf0 | tee -a "$LOG_FILE"
+
+	cd /usr/lib/aarch64-linux-gnu
+	printf "\nCopy correct libsdl3 for device\n" | tee -a "$LOG_FILE"
+	if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+      sudo rm -fv libSDL3.so.0.5.0.rk3326 | tee -a "$LOG_FILE"
+    else
+      sudo mv -fv libSDL3.so.0.5.0.rk3326 libSDL3.so.0.5.0 | tee -a "$LOG_FILE"
+	fi
+	sudo ln -sf libSDL3.so.0.5.0 libSDL3.so.0
+	sudo ln -sf libSDL3.so.0 libSDL3.so
+	sudo ln -sf libSDL3_mixer.so.0.3.0 libSDL3_mixer.so.0
+	sudo ln -sf libSDL3_mixer.so.0 libSDL3_mixer.so
+	cd /home/ark
+
+	if [[ $DEVICE == "MINILOONG" ]]; then
+	  printf "\nUpdating retroarch to use proper rotation for the vulkan driver\n" | tee -a "$LOG_FILE"
+	  cp -fv /opt/retroarch/bin/retroarch-rgarotated.rk3566 /opt/retroarch/bin/retroarch | tee -a "$LOG_FILE"
+	  cp -fv /opt/retroarch/bin/retroarch32-rgarotated.rk3566 /opt/retroarch/bin/retroarch32 | tee -a "$LOG_FILE"
+	  chmod 777 /opt/retroarch/bin/retroarch*
+	  sudo rm -fv /opt/retroarch/bin/retroarch-rgarotated.rk3566 /opt/retroarch/bin/retroarch32-rgarotated.rk3566 | tee -a "$LOG_FILE"
+	else
+	  sudo rm -fv /opt/retroarch/bin/retroarch-rgarotated.rk3566 /opt/retroarch/bin/retroarch32-rgarotated.rk3566 | tee -a "$LOG_FILE"
+	fi
+
+	printf "\nDoing some theme updates..\n\n" | tee -a "$LOG_FILE"
+	for theme in es-theme-nes-box es-theme-sagabox es-theme-saganx es-theme-switch
+	do
+	  if [ -d "/roms/themes/$theme" ]; then
+		printf "\nUpdating $theme in /roms/themes\n" | tee -a "$LOG_FILE"
+		cd /roms/themes/$theme
+		git fetch origin
+		git reset --hard origin/$(git rev-parse --abbrev-ref HEAD)
+		git pull
+		cd /home/ark
+	  fi
+	  if [ -d "/roms2/themes/$theme" ]; then
+		printf "\nUpdating $theme in /roms2/themes\n" | tee -a "$LOG_FILE"
+		cd /roms2/themes/$theme
+		git fetch origin
+		git reset --hard origin/$(git rev-parse --abbrev-ref HEAD)
+		git pull
+		cd /home/ark
+	  fi
+	done
+
+	sudo systemctl daemon-reload
+
+	printf "\nUpdate boot text to reflect current version of dArkOS\n" | tee -a "$LOG_FILE"
+	sudo sed -i "/title\=/c\title\=dArkOS ($UPDATE_DATE)" /usr/share/plymouth/themes/text.plymouth
+	echo "$UPDATE_DATE" > /home/ark/.config/.VERSION
+
+	touch "$UPDATE_DONE"
+	rm -v -- "$0" | tee -a "$LOG_FILE"
 	printf "\033c" >> /dev/tty1
 	msgbox "Updates have been completed.  System will now restart after you hit the A button to continue.  If the system doesn't restart after pressing A, just restart the system manually."
+	echo $c_brightness > /sys/class/backlight/backlight/brightness
 	sudo reboot
 	exit 187
 
