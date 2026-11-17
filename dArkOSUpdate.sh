@@ -1,7 +1,7 @@
 #!/bin/bash
 
 clear
-UPDATE_DATE="11072026"
+UPDATE_DATE="11172026"
 LOG_FILE="/home/ark/update$UPDATE_DATE.log"
 UPDATE_DONE="/home/ark/.config/.update$UPDATE_DATE"
 
@@ -1054,6 +1054,62 @@ if [ ! -f "/home/ark/.config/.update11072026" ]; then
 	done
 
 	sudo systemctl daemon-reload
+
+	printf "\nUpdate boot text to reflect current version of dArkOS\n" | tee -a "$LOG_FILE"
+	sudo sed -i "/title\=/c\title\=dArkOS ($UPDATE_DATE)" /usr/share/plymouth/themes/text.plymouth
+	echo "$UPDATE_DATE" > /home/ark/.config/.VERSION
+
+	touch "/home/ark/.config/.update11072026"
+fi
+
+if [ ! -f "/home/ark/.config/.update11172026" ]; then
+
+	printf "\nFix menu hotkey for dsperate for rg351mp\nFix retrorun for saturn emulation\nFix retroarch for rk3566\nFix gametank standalone\n" | tee -a "$LOG_FILE"
+	sudo rm -rf /dev/shm/*
+	sudo wget -t 3 -T 60 --no-check-certificate "$LOCATION"/11172026/darkosupdate11172026.zip -O /dev/shm/darkosupdate11172026.zip -a "$LOG_FILE" || sudo rm -f /dev/shm/darkosupdate11172026.zip | tee -a "$LOG_FILE"
+	if [ -f "/dev/shm/darkosupdate11172026.zip" ]; then
+	  if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+        sudo unzip -X -o /dev/shm/darkosupdate11172026.zip -d / | tee -a "$LOG_FILE"
+	  else
+	    sudo unzip -X -o /dev/shm/darkosupdate11172026.zip -x opt/retroarch/bin/retroarch opt/retroarch/bin/retroarch-rgarotated.rk3566 -d / | tee -a "$LOG_FILE"
+	  fi
+	else
+	  printf "\nThe update couldn't complete because the package did not download correctly.\nPlease retry the update again." | tee -a "$LOG_FILE"
+	  sudo rm -fv /dev/shm/darkosupdate11172026.z* | tee -a "$LOG_FILE"
+	  sleep 3
+	  echo $c_brightness > /sys/class/backlight/backlight/brightness
+	  exit 1
+	fi
+
+	DEVICE=$(cat /home/ark/.config/.DEVICE)
+
+	if [[ $DEVICE == "RG351MP" ]]; then
+	  printf "\nFix menu hotkey for dsperate emulator..\n" | tee -a "$LOG_FILE"
+	  sed -i -E 's/pause[[:space:]]*=[[:space:]]*guide/pause = leftstick/g' /opt/DSperate/config/dsperate.ini
+	  if [[ -f "/roms/nds/dsperate/dsperate.ini" ]]; then
+	    sed -i -E 's/pause[[:space:]]*=[[:space:]]*guide/pause = leftstick/g' /roms/nds/dsperate/dsperate.ini
+	  fi
+	  if [[ -f "/roms2/nds/dsperate/dsperate.ini" ]]; then
+	    sed -i -E 's/pause[[:space:]]*=[[:space:]]*guide/pause = leftstick/g' /roms2/nds/dsperate/dsperate.ini
+	  fi
+	fi
+
+	if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+	  rm -fv /opt/gametank/GameTankEmulator.rk3326 | tee -a "$LOG_FILE"
+	else
+	  mv -fv /opt/gametank/GameTankEmulator.rk3326 /opt/gametank/GameTankEmulator | tee -a "$LOG_FILE"
+	fi
+
+	if [[ "$(tr -d '\0' < /proc/device-tree/compatible)" == *"rk3566"* ]]; then
+		if [[ $DEVICE == "MINILOONG" ]]; then
+		  printf "\nUpdating retroarch to use proper rotation for the vulkan driver\n" | tee -a "$LOG_FILE"
+		  cp -fv /opt/retroarch/bin/retroarch-rgarotated.rk3566 /opt/retroarch/bin/retroarch | tee -a "$LOG_FILE"
+		  chmod 777 /opt/retroarch/bin/retroarch*
+		  sudo rm -fv /opt/retroarch/bin/retroarch-rgarotated.rk3566 | tee -a "$LOG_FILE"
+		else
+		  sudo rm -fv /opt/retroarch/bin/retroarch-rgarotated.rk3566 | tee -a "$LOG_FILE"
+		fi
+	fi
 
 	printf "\nUpdate boot text to reflect current version of dArkOS\n" | tee -a "$LOG_FILE"
 	sudo sed -i "/title\=/c\title\=dArkOS ($UPDATE_DATE)" /usr/share/plymouth/themes/text.plymouth
