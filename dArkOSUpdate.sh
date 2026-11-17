@@ -1,7 +1,11 @@
 #!/bin/bash
 
 clear
-UPDATE_DATE="11172026"
+if [[ $(cat /home/ark/.config/.DEVICE) == "MINILOONG" ]]; then
+  UPDATE_DATE="11172026-1"
+else
+  UPDATE_DATE="11172026"
+fi
 LOG_FILE="/home/ark/update$UPDATE_DATE.log"
 UPDATE_DONE="/home/ark/.config/.update$UPDATE_DATE"
 
@@ -1115,12 +1119,48 @@ if [ ! -f "/home/ark/.config/.update11172026" ]; then
 	sudo sed -i "/title\=/c\title\=dArkOS ($UPDATE_DATE)" /usr/share/plymouth/themes/text.plymouth
 	echo "$UPDATE_DATE" > /home/ark/.config/.VERSION
 
-	touch "$UPDATE_DONE"
+	touch "/home/ark/.config/.update11172026"
+
+fi
+
+if [[ $(cat /home/ark/.config/.DEVICE) == "MINILOONG" ]]; then
+	if [ ! -f "/home/ark/.config/.update11172026-1" ]; then
+
+		printf "\nFix Retroarch for Miniloong\n" | tee -a "$LOG_FILE"
+		sudo rm -rf /dev/shm/*
+		sudo wget -t 3 -T 60 --no-check-certificate "$LOCATION"/11172026-1/darkosupdate11172026-1.zip -O /dev/shm/darkosupdate11172026-1.zip -a "$LOG_FILE" || sudo rm -f /dev/shm/darkosupdate11172026-1.zip | tee -a "$LOG_FILE"
+		if [ -f "/dev/shm/darkosupdate11172026-1.zip" ]; then
+		  sudo unzip -X -o /dev/shm/darkosupdate11172026-1.zip -d / | tee -a "$LOG_FILE"
+		else
+		  printf "\nThe update couldn't complete because the package did not download correctly.\nPlease retry the update again." | tee -a "$LOG_FILE"
+		  sudo rm -fv /dev/shm/darkosupdate11172026-1.z* | tee -a "$LOG_FILE"
+		  sleep 3
+		  echo $c_brightness > /sys/class/backlight/backlight/brightness
+		  exit 1
+		fi
+
+		cp -fv /opt/retroarch/bin/retroarch-rgarotated.rk3566 /opt/retroarch/bin/retroarch | tee -a "$LOG_FILE"
+		chmod 777 /opt/retroarch/bin/retroarch*
+		sudo rm -fv /opt/retroarch/bin/retroarch-rgarotated.rk3566 | tee -a "$LOG_FILE"
+
+		printf "\nUpdate boot text to reflect current version of dArkOS\n" | tee -a "$LOG_FILE"
+		sudo sed -i "/title\=/c\title\=dArkOS ($UPDATE_DATE)" /usr/share/plymouth/themes/text.plymouth
+		echo "$UPDATE_DATE" > /home/ark/.config/.VERSION
+
+		touch "$UPDATE_DONE"
+		rm -v -- "$0" | tee -a "$LOG_FILE"
+		printf "\033c" >> /dev/tty1
+		msgbox "Updates have been completed.  System will now restart after you hit the A button to continue.  If the system doesn't restart after pressing A, just restart the system manually."
+		echo $c_brightness > /sys/class/backlight/backlight/brightness
+		sudo reboot
+		exit 187
+
+	fi
+else
 	rm -v -- "$0" | tee -a "$LOG_FILE"
 	printf "\033c" >> /dev/tty1
 	msgbox "Updates have been completed.  System will now restart after you hit the A button to continue.  If the system doesn't restart after pressing A, just restart the system manually."
 	echo $c_brightness > /sys/class/backlight/backlight/brightness
 	sudo reboot
 	exit 187
-
 fi
